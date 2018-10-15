@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -e
+set -u
+
+git-fixup && git rebase -i --autosquash HEAD~2

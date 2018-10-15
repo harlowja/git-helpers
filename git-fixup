@@ -1,0 +1,55 @@
+#!/usr/bin/python
+
+from __future__ import print_function
+
+import subprocess
+import os
+import sys
+
+NO_CHANGES = [
+    'nothing to commit',
+    'nothing added to commit',
+]
+
+
+def count_matches(items, search_in):
+    m = 0
+    for item in items:
+        if item in search_in:
+            m += 1
+    return m
+
+
+def main():
+    if len(sys.argv) == 2:
+        cwd = sys.argv[1]
+    else:
+        cwd = os.getcwd()
+    stdout = subprocess.check_output(['git', 'status'], cwd=cwd)
+    stdout = stdout.strip()
+    if count_matches(NO_CHANGES, stdout):
+        print('Nothing to commit.', file=sys.stderr)
+        sys.exit(1)
+    n = 1
+    while True:
+        stdout = subprocess.check_output(['git', 'log',
+                                          "-n", str(n),
+                                          "--pretty='format:%H,%s'"], cwd=cwd)
+        try:
+            line = stdout.splitlines()[n - 1]
+            line = line.split(":", 1)[1]
+            sha, subject = line.split(",", 1)
+        except (IndexError, ValueError):
+            print("No source commit found", file=sys.stderr)
+            sys.exit(1)
+        subject = subject.strip()
+        if subject.startswith("fixup!"):
+            n += 1
+            continue
+        subprocess.check_call(['git', 'commit', '-a', '--fixup', sha], cwd=cwd)
+        print("Attached fixup to: %s %s" % (sha, subject))
+        sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
